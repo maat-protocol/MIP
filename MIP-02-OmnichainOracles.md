@@ -196,6 +196,7 @@ flowchart LR
 
         OO --> |"lzRead()"| EO
         EO --> |new PPS| OO
+
     end
 ```
 
@@ -207,9 +208,23 @@ Choosing the implementation will depend on:
 
 ## Issues to Solve
 
-- **Bridge Awareness:** The system must account for assets deducted from strategies or vault contracts during bridging. A method to account for in-flight bridges is needed.
-- **High Costs (solved with lzRead):** LZ message sending can be costly, necessitating infrequent synchronization or synchronization only upon request. A bounty system could incentivize synchronization when calculations deviate by a specific basis point value.
-- **Immediate Calculation Errors (solved with lzRead):** Synchronization can take up to 30 minutes, during which new deposits or withdrawals may alter the global contract state. Data should be gathered at specific timestamps or block numbers to mitigate this, similar to how asset balances are obtained for all vaults and strategies.
+**Bridge Awareness (solved):** The system must account for assets deducted from strategies or vault contracts during bridging. A method to account for in-flight bridges is needed.
+
+Solution:
+Make a virtual assets counter, that increases on bridge departure and decreases on bridge arrival. It can go negative, so it's represented in `int256`. Every Vault contract will have such counter and it will use it to calculate totalAssets and totalSupply.
+
+The only problem is that we need to account for bridge fees, so we should bridge data about how much tokens was bridged initially and on destination calculate, how much vault actually got and account for fees in decreasing virtual balance.
+
+**High Costs (solved with lzRead):** LZ message sending can be costly, necessitating infrequent synchronization or synchronization only upon request. A bounty system could incentivize synchronization when calculations deviate by a specific basis point value.
+
+Estimated costs (for 6 chains):
+
+- with messages ~$2.25
+- lzRead ~$1.15
+
+Cost of maintaining new chains grows faster with messages, compared to lzRead
+
+**Immediate Calculation Errors (solved with lzRead):** Synchronization can take up to 30 minutes, during which new deposits or withdrawals may alter the global contract state. Data should be gathered at specific timestamps or block numbers to mitigate this, similar to how asset balances are obtained for all vaults and strategies.
 
 This approach may result in a lagging PPS, but the slight reduction in PPS should not pose a significant issue. Each Vault/Strategy contract can snapshot totalSupply/totalAssets at every deposit/withdraw action.
 
